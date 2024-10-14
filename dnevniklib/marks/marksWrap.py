@@ -7,9 +7,11 @@ class MarksWrap:
                 res_dict[mark.subject_name].append(mark)
             else:
                 res_dict[mark.subject_name] = [mark]
+        
         res_str = ""
         for key, value in res_dict.items():
-            res_str += f"\n{key}: \n"
+            res_str += f"\n📚 <b>{key}:</b> \n"  
             for mark in value:
-                res_str += str(mark) + "\n"
+                res_str += f"⭐ {str(mark)}\n"  
+
         return res_str

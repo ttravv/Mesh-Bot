@@ -26,7 +26,7 @@ async def start_command(message: types.Message):
         reply_markup=keyboard,
     )
 
-    # Store the notification message ID for the user
+    
     user_notifications[message.from_user.id] = notification.message_id
 
 
@@ -50,18 +50,18 @@ async def process_token(message: types.Message):
     user_tokens[chat_id] = token
     keyboard = create_options_keyboard()
 
-    # Удаление сообщений с просьбой ввести токен
+
     if chat_id in user_notifications:
         request_message_id, token_message_id = user_notifications[chat_id]
         try:
-            # Удаляем сообщение с просьбой авторизоваться
+           
             await message.bot.delete_message(chat_id, request_message_id)
             await message.bot.delete_message(chat_id, token_message_id)
-            del user_notifications[chat_id]  # Удаляем запись об уведомлениях
+            del user_notifications[chat_id]  
         except Exception as e:
             print(f"Failed to delete notification messages: {e}")
 
-    # Удаление сообщения с введенным токеном
+
     try:
         await message.delete()
     except Exception as e:

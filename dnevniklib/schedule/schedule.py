@@ -29,7 +29,7 @@ class Schedule:
         for activity in response.json().get('activities', []):
             if activity['type'] != 'BREAK':
                 room_number = activity['room_number'] if activity['room_number'] is not None else "Не указано"
-                end_time = activity.get('end_time', "Не указано")  # Default if not provided
+                end_time = activity.get('end_time', "Не указано")  
                 
                 today.subject_list.append({
                     'subject_name': activity['lesson']['subject_name'],

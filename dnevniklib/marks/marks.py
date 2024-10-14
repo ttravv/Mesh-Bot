@@ -28,3 +28,25 @@ class Marks:
                 )
             )
         return res
+
+
+class MarksByDate:
+    def __init__(self, student: Student) -> None:
+        self.marks = Marks(student)
+
+    def get_mark_for_date(self, date):
+        # Fetch marks for the specific date
+        marks = self.marks.get_marks_by_date(date, date)
+        
+        if not marks:
+            return f"📅 **Оценок за {date} нет.**"
+        
+        res_str = f"📅 **Оценки за {date}:**\n"
+        
+        for mark in marks:
+            res_str += (
+                f"   - **{mark.subject_name}:** {mark.value} "
+                f"(Комментарий: {mark.comment})\n"
+            )
+        
+        return res_str.strip()
