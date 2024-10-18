@@ -7,7 +7,8 @@ class HomeworksWrap:
                 res_dict[homework.subject_name].append(homework)
             else:
                 res_dict[homework.subject_name] = [homework]
-        res_str = "🎓 <b>Домашние задания:</b>\n"  
+        
+        res_str = ""  
         for key, value in res_dict.items():
             res_str += f"\n🌟 <b>{key}:</b>\n"  
             for hw in value:
@@ -15,7 +16,4 @@ class HomeworksWrap:
                 res_str += f"   • {hw.description} ({status})\n" 
 
         res_str += "\n✨ <b>Успехов в учебе!</b>"  
-        return res_str.strip() 
-    
-
-
+        return res_str.strip()

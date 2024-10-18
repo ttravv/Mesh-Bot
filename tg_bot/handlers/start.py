@@ -273,7 +273,7 @@ async def fetch_homework(callback_query, selected_date, token):
         homework_info = HomeworksWrap.build(homework_list)
 
         await callback_query.message.answer(
-            f"📚 Домашние задания на {selected_date}:\n{homework_info}", parse_mode="HTML"
+            f"<b>📚 Домашние задания на {selected_date}:\n{homework_info}</b>", parse_mode="HTML"
         )
 
     except DnevnikTokenError:

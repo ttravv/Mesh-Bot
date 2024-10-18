@@ -12,6 +12,6 @@ class MarksWrap:
         for key, value in res_dict.items():
             res_str += f"\n📚 <b>{key}:</b> \n"  
             for mark in value:
-                res_str += f"⭐ {str(mark)}\n"  
+                res_str += f"<b>⭐ {str(mark)}\n</b>"  
 
         return res_str

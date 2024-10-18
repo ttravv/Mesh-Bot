@@ -45,7 +45,7 @@ class MarksByDate:
         for mark in marks:
             res_str += (
                 f"   🌟 <b>{mark.subject_name}:</b> {mark.value} "
-                f"(💬 Комментарий: {mark.comment})\n"
+                f"<b>(💬 Комментарий: {mark.comment})\n</b>"
             )
      
         
