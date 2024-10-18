@@ -6,8 +6,7 @@ class ScheduleEntity(BaseModel):
     subject_list: list
 
     def __str__(self):
-        res = f"📅 **Расписание на {self.date}**\n"
-        res += "🟦" * 50 + "\n"
+        res = f"<b>📅 Расписание на {self.date}</b>\n"
 
         time_slots = {}
         for item in self.subject_list:
@@ -21,5 +20,5 @@ class ScheduleEntity(BaseModel):
             for subject in subjects:
                 res += f"  • {subject['subject_name']} (Кабинет: {subject['room_number']})\n"
 
-        res += "🟦" * 50 + "\n"
+        
         return res

@@ -7,14 +7,14 @@ class HomeworksWrap:
                 res_dict[homework.subject_name].append(homework)
             else:
                 res_dict[homework.subject_name] = [homework]
-        res_str = "🎓 **Домашние задания:**\n"  
+        res_str = "🎓 <b>Домашние задания:</b>\n"  
         for key, value in res_dict.items():
-            res_str += f"\n🌟 **{key}:**\n"  
+            res_str += f"\n🌟 <b>{key}:</b>\n"  
             for hw in value:
-                status = "✔️" if hw.is_done else "❌"
-                res_str += f"   - {hw.description} ({status})\n" 
+                status = "<b>Статус выполнения:</b> ✔️" if hw.is_done else "<b>Статус выполнения:</b> ❌"
+                res_str += f"   • {hw.description} ({status})\n" 
 
-        res_str += "\n✨ Успехов в учебе!"  
+        res_str += "\n✨ <b>Успехов в учебе!</b>"  
         return res_str.strip() 
     
 

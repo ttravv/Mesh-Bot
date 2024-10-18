@@ -5,13 +5,15 @@ from dateutil.relativedelta import relativedelta
 
 
 class Calendar:
-    def __init__(self, chat_id: int, message_id: int, callback) -> None:
+    def __init__(self, chat_id: int, message_id: int, callback, action: str, user_state: dict) -> None:
         self.chat_id = chat_id
         self.message_id = message_id
         self.callback = callback
         self.msg_text = "Выберите начальную дату"
         self.date = datetime.today()
         self.date1 = None
+        self.action = action
+        user_state['action'] = action
 
     async def setup_buttons(self):
         btns = [

@@ -35,18 +35,18 @@ class MarksByDate:
         self.marks = Marks(student)
 
     def get_mark_for_date(self, date):
-        # Fetch marks for the specific date
         marks = self.marks.get_marks_by_date(date, date)
         
         if not marks:
-            return f"📅 **Оценок за {date} нет.**"
+            return f"📅 <b>Оценок за {date} нет.</b>"
         
-        res_str = f"📅 **Оценки за {date}:**\n"
+        res_str = f"📅 <b>Оценки за {date}:</b>\n" + "\n"
         
         for mark in marks:
             res_str += (
-                f"   - **{mark.subject_name}:** {mark.value} "
-                f"(Комментарий: {mark.comment})\n"
+                f"   🌟 <b>{mark.subject_name}:</b> {mark.value} "
+                f"(💬 Комментарий: {mark.comment})\n"
             )
+     
         
         return res_str.strip()

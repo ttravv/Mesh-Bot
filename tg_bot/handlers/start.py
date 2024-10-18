@@ -116,7 +116,7 @@ async def process_schedule(callback_query: types.CallbackQuery):
         return
 
     calendar_instance = Calendar(
-        chat_id, callback_query.message.message_id, process_schedule
+        chat_id, callback_query.message.message_id, process_schedule, action='schedule', user_state=user_state
     )
     msg_text, markup = await calendar_instance.setup_buttons()
     await callback_query.message.answer(msg_text, reply_markup=markup)
@@ -137,24 +137,31 @@ async def process_date_selection(callback_query: types.CallbackQuery):
 
     year, month, day = map(int, callback_query.data.split("_")[1:])
     selected_date = datetime(year, month, day)
+
     
-    if callback_query.data.startswith("homework"):
-        await fetch_homework(callback_query, selected_date, token)
-        return
+
+    
+    if user_state['action'] == "homework":
+        await fetch_homework(
+            callback_query, selected_date, token
+        )
+
+    if user_state['action'] == 'marks_by_date':
+        await fetch_marks_by_date(callback_query, selected_date, token)
    
     if chat_id in user_state and 'start_date' not in user_state[chat_id]:
         user_state[chat_id]['start_date'] = selected_date
         await callback_query.message.answer("📅 Начальная дата выбрана. Теперь выберите конечную дату:")
 
         calendar_instance = Calendar(
-            chat_id, callback_query.message.message_id, process_date_selection
+            chat_id, callback_query.message.message_id, process_date_selection, action='marks', user_state=user_state
         )
         await calendar_instance.on_date(selected_date)
 
         msg_text, markup = await calendar_instance.setup_buttons()
         await callback_query.message.edit_text(msg_text, reply_markup=markup)
 
-    elif chat_id in user_state and 'start_date' in user_state[chat_id]:
+    elif chat_id in user_state and 'start_date' in user_state[chat_id] or user_state["action"] == 'marks':
         start_date = user_state[chat_id]['start_date']
         end_date = selected_date
 
@@ -165,17 +172,21 @@ async def process_date_selection(callback_query: types.CallbackQuery):
 
     else:
         calendar_instance = Calendar(
-            chat_id, callback_query.message.message_id, process_date_selection
+            chat_id, callback_query.message.message_id, process_date_selection, action=user_state["action"], user_state=user_state
         )
         await calendar_instance.on_date(selected_date)
 
-        if calendar_instance.date1:
+        if user_state['action'] == 'schedule':
             await fetch_schedule(
                 callback_query, calendar_instance.date1, selected_date, token
             )
         else:
-            msg_text, markup = await calendar_instance.setup_buttons()
+            msg_text, markup = await calendar_instance.setup_buttons(
+
+            )
             await callback_query.message.edit_text(msg_text, reply_markup=markup)
+
+    
             
 
 
@@ -237,7 +248,7 @@ async def process_homework(callback_query: types.CallbackQuery):
         return
 
     calendar_instance = Calendar(
-        chat_id, callback_query.message.message_id, fetch_homework
+        chat_id, callback_query.message.message_id, fetch_homework, action='homework', user_state=user_state
     )
     msg_text, markup = await calendar_instance.setup_buttons()
     await callback_query.message.answer(msg_text, reply_markup=markup)
@@ -262,7 +273,7 @@ async def fetch_homework(callback_query, selected_date, token):
         homework_info = HomeworksWrap.build(homework_list)
 
         await callback_query.message.answer(
-            f"📚 Домашние задания на [{selected_date}]:\n{homework_info}"
+            f"📚 Домашние задания на {selected_date}:\n{homework_info}", parse_mode="HTML"
         )
 
     except DnevnikTokenError:
@@ -288,7 +299,7 @@ async def process_marks_by_date(callback_query: types.CallbackQuery):
         return
 
     
-    calendar_instance = Calendar(chat_id, callback_query.message.message_id, fetch_marks)
+    calendar_instance = Calendar(chat_id, callback_query.message.message_id, fetch_marks, action='marks_by_date', user_state=user_state)
     msg_text, markup = await calendar_instance.setup_buttons()
     await callback_query.message.answer(msg_text, reply_markup=markup)
 
@@ -333,7 +344,7 @@ async def process_marks(callback_query: types.CallbackQuery):
 
   
     calendar_instance = Calendar(
-        chat_id, callback_query.message.message_id, process_date_selection
+        chat_id, callback_query.message.message_id, process_date_selection, action='marks', user_state=user_state
     )
     msg_text, markup = await calendar_instance.setup_buttons()
     await callback_query.message.answer(msg_text, reply_markup=markup)
@@ -375,7 +386,7 @@ async def fetch_marks(callback_query: types.CallbackQuery, chat_id, start_date, 
 async def process_prev_month(callback_query: types.CallbackQuery):
     try:
         calendar_instance = Calendar(
-            callback_query.from_user.id, callback_query.message.message_id, None
+           callback_query.from_user.id, callback_query.message.message_id, process_date_selection, action=user_state['action'], user_state=user_state
         )
         msg_text, markup = await calendar_instance.backward()
         await callback_query.message.edit_text(msg_text, reply_markup=markup)
@@ -388,7 +399,7 @@ async def process_prev_month(callback_query: types.CallbackQuery):
 async def process_next_month(callback_query: types.CallbackQuery):
     try:
         calendar_instance = Calendar(
-            callback_query.from_user.id, callback_query.message.message_id, None
+            callback_query.from_user.id, callback_query.message.message_id, process_date_selection, action=user_state['action'], user_state=user_state
         )
         msg_text, markup = await calendar_instance.forward()
         await callback_query.message.edit_text(msg_text, reply_markup=markup)
@@ -401,7 +412,7 @@ async def process_next_month(callback_query: types.CallbackQuery):
 async def process_current_month(callback_query: types.CallbackQuery):
     try:
         calendar_instance = Calendar(
-            callback_query.from_user.id, callback_query.message.message_id, None
+            callback_query.from_user.id, callback_query.message.message_id, process_date_selection, action=user_state['action'], user_state=user_state
         )
         msg_text, markup = await calendar_instance.go_to_current_month()
         await callback_query.message.edit_text(msg_text, reply_markup=markup)
