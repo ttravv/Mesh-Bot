@@ -138,8 +138,9 @@ async def process_date_selection(callback_query: types.CallbackQuery):
     year, month, day = map(int, callback_query.data.split("_")[1:])
     selected_date = datetime(year, month, day)
     
-
-
+    if callback_query.data.startswith("homework"):
+        await fetch_homework(callback_query, selected_date, token)
+        return
    
     if chat_id in user_state and 'start_date' not in user_state[chat_id]:
         user_state[chat_id]['start_date'] = selected_date
@@ -160,6 +161,7 @@ async def process_date_selection(callback_query: types.CallbackQuery):
         del user_state[chat_id]
 
         await fetch_marks(callback_query, chat_id, start_date, end_date)
+
 
     else:
         calendar_instance = Calendar(
