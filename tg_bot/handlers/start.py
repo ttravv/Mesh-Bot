@@ -1,6 +1,3 @@
-#ПОФИКСИТЬ УВЕДОМЛЕНИЯ, ПРИЧЕСАТЬ КОД, СДЕЛАТЬ ТАК ЧТОБЫ ДВОЙНОГО НАЖАТИЯ НЕ ТРЕБОВАЛОСЬ
-
-
 from aiogram import types, Router, F
 from aiogram.filters.command import Command
 
