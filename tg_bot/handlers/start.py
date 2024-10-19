@@ -8,6 +8,8 @@ from dnevniklib.marks.marks import Marks, MarksByDate
 from dnevniklib.marks.marksWrap import MarksWrap
 from dnevniklib.homeworks.homeworksWrap import HomeworksWrap
 from datetime import datetime, timedelta
+from dnevniklib.notification.notification import Notification
+from dnevniklib.notification.notificationWrap import NotificationWrap
 import logging
 
 from tg_bot.handlers.keyboards import create_keyboard, create_options_keyboard
@@ -79,18 +81,18 @@ async def process_profile(callback_query: types.CallbackQuery):
     try:
         student = Student(token)
         profile_info = (
-        f"<b>👤 Имя:</b> {student.first_name or 'Не указано'}\n"
-        f"<b>👥 Фамилия:</b> {student.last_name or 'Не указано'}\n"
-        f"<b>🆔 Отчество:</b> {student.middle_name or 'Не указано'}\n"
-        f"<b>🎂 Дата рождения:</b> {student.birthdate or 'Не указано'}\n"
-        f"<b>📧 Email:</b> {student.email or 'Не указано'}\n"
-        f"<b>🎓 Возраст:</b> {student.age or 'Не указано'}\n"
-        f"<b>🚻 Пол:</b> {'Мужской' if student.sex == 'male' else 'Женский'}\n"
-        f"<b>🏫 Класс:</b> {student.class_name or 'Не указано'}\n"
-        f"<b>📚 ID студента:</b> {student.id or 'Не указано'}\n"
-        f"<b>🏢 ID школы:</b> {student.school_id or 'Не указано'}\n"
-        f"<b>🔑 Логин:</b> {student.login or 'Не указано'}"
-)
+            f"<b>👤 Имя:</b> {student.first_name or 'Не указано'}\n"
+            f"<b>👥 Фамилия:</b> {student.last_name or 'Не указано'}\n"
+            f"<b>🆔 Отчество:</b> {student.middle_name or 'Не указано'}\n"
+            f"<b>🎂 Дата рождения:</b> {student.birthdate or 'Не указано'}\n"
+            f"<b>📧 Email:</b> {student.email or 'Не указано'}\n"
+            f"<b>🎓 Возраст:</b> {student.age or 'Не указано'}\n"
+            f"<b>🚻 Пол:</b> {'Мужской' if student.sex == 'male' else 'Женский'}\n"
+            f"<b>🏫 Класс:</b> {student.class_name or 'Не указано'}\n"
+            f"<b>📚 ID студента:</b> {student.id or 'Не указано'}\n"
+            f"<b>🏢 ID школы:</b> {student.school_id or 'Не указано'}\n"
+            f"<b>🔑 Логин:</b> {student.login or 'Не указано'}"
+        )
         await callback_query.message.answer(profile_info, parse_mode="HTML")
     except DnevnikTokenError:
         logging.error(f"Ошибка авторизации: токен {token} недействителен.")
@@ -116,12 +118,14 @@ async def process_schedule(callback_query: types.CallbackQuery):
         return
 
     calendar_instance = Calendar(
-        chat_id, callback_query.message.message_id, process_schedule, action='schedule', user_state=user_state
+        chat_id,
+        callback_query.message.message_id,
+        process_schedule,
+        action="schedule",
+        user_state=user_state,
     )
     msg_text, markup = await calendar_instance.setup_buttons()
     await callback_query.message.answer(msg_text, reply_markup=markup)
-
-
 
 
 @router.callback_query(F.data.startswith("date_"))
@@ -138,57 +142,118 @@ async def process_date_selection(callback_query: types.CallbackQuery):
     year, month, day = map(int, callback_query.data.split("_")[1:])
     selected_date = datetime(year, month, day)
 
-    
+    if user_state["action"] == "homework":
+        await fetch_homework(callback_query, selected_date, token)
 
-    
-    if user_state['action'] == "homework":
-        await fetch_homework(
-            callback_query, selected_date, token
+    if user_state["action"] == "marks_by_date":
+        await fetch_marks_by_date(callback_query, selected_date, token)
+
+    if user_state["action"] == "notifications":
+        await fetch_notifications(callback_query, selected_date, token)
+
+    if chat_id in user_state and "start_date" not in user_state[chat_id]:
+        user_state[chat_id]["start_date"] = selected_date
+        await callback_query.message.answer(
+            "📅 Начальная дата выбрана. Теперь выберите конечную дату:"
         )
 
-    if user_state['action'] == 'marks_by_date':
-        await fetch_marks_by_date(callback_query, selected_date, token)
-   
-    if chat_id in user_state and 'start_date' not in user_state[chat_id]:
-        user_state[chat_id]['start_date'] = selected_date
-        await callback_query.message.answer("📅 Начальная дата выбрана. Теперь выберите конечную дату:")
-
         calendar_instance = Calendar(
-            chat_id, callback_query.message.message_id, process_date_selection, action='marks', user_state=user_state
+            chat_id,
+            callback_query.message.message_id,
+            process_date_selection,
+            action="marks",
+            user_state=user_state,
         )
         await calendar_instance.on_date(selected_date)
 
         msg_text, markup = await calendar_instance.setup_buttons()
         await callback_query.message.edit_text(msg_text, reply_markup=markup)
 
-    elif chat_id in user_state and 'start_date' in user_state[chat_id] or user_state["action"] == 'marks':
-        start_date = user_state[chat_id]['start_date']
+    elif (
+        chat_id in user_state
+        and "start_date" in user_state[chat_id]
+        or user_state["action"] == "marks"
+    ):
+        start_date = user_state[chat_id]["start_date"]
         end_date = selected_date
 
         del user_state[chat_id]
 
         await fetch_marks(callback_query, chat_id, start_date, end_date)
 
-
     else:
         calendar_instance = Calendar(
-            chat_id, callback_query.message.message_id, process_date_selection, action=user_state["action"], user_state=user_state
+            chat_id,
+            callback_query.message.message_id,
+            process_date_selection,
+            action=user_state["action"],
+            user_state=user_state,
         )
         await calendar_instance.on_date(selected_date)
 
-        if user_state['action'] == 'schedule':
+        if user_state["action"] == "schedule":
             await fetch_schedule(
                 callback_query, calendar_instance.date1, selected_date, token
             )
         else:
-            msg_text, markup = await calendar_instance.setup_buttons(
-
-            )
+            msg_text, markup = await calendar_instance.setup_buttons()
             await callback_query.message.edit_text(msg_text, reply_markup=markup)
 
-    
-            
 
+@router.callback_query(F.data == "notifications")
+async def process_notifications(callback_query: types.CallbackQuery):
+    chat_id = callback_query.from_user.id
+    token = user_tokens.get(chat_id)
+
+    if not token:
+        await callback_query.message.answer(
+            "🚫 Вы не авторизованы. Пожалуйста, авторизуйтесь сначала."
+        )
+        return
+
+    calendar_instance = Calendar(
+        chat_id,
+        callback_query.message.message_id,
+        fetch_notifications,
+        action="notifications",
+        user_state=user_state,
+    )
+    msg_text, markup = await calendar_instance.setup_buttons()
+    await callback_query.message.answer(msg_text, reply_markup=markup)
+
+
+async def fetch_notifications(
+    callback_query: types.CallbackQuery, selected_date, token
+):
+    loading_message = await callback_query.message.answer("⏳ Получение уведомлений...")
+    try:
+        student = Student(token)
+        notifications = Notification(student)
+        notification_list = notifications.get_notification_by_date()
+
+        await loading_message.delete()
+
+        if not notification_list:
+            await callback_query.message.answer("❌ Нет уведомлений на этот день.")
+            return
+
+        notifications_info = NotificationWrap.build(notification_list)
+
+        await callback_query.message.answer(
+            f"<b>📚 Уведомления на {selected_date}:\n{notifications_info}</b>",
+            parse_mode="HTML",
+        )
+
+    except DnevnikTokenError:
+        await loading_message.delete()
+        await callback_query.message.answer(
+            "❌ Ошибка авторизации. Попробуйте обновить токен."
+        )
+    except Exception:
+        await loading_message.delete()
+        await callback_query.message.answer(
+            f"❌ Произошла ошибка при получении уведомлений."
+        )
 
 
 async def fetch_schedule(callback_query, start_date, end_date, token):
@@ -216,7 +281,6 @@ async def fetch_schedule(callback_query, start_date, end_date, token):
             )
             return
 
-        
         formatted_schedule = "\n\n".join(
             f"{entity.date}:\n{str(entity)}" for entity in schedule_entities
         )
@@ -248,11 +312,14 @@ async def process_homework(callback_query: types.CallbackQuery):
         return
 
     calendar_instance = Calendar(
-        chat_id, callback_query.message.message_id, fetch_homework, action='homework', user_state=user_state
+        chat_id,
+        callback_query.message.message_id,
+        fetch_homework,
+        action="homework",
+        user_state=user_state,
     )
     msg_text, markup = await calendar_instance.setup_buttons()
     await callback_query.message.answer(msg_text, reply_markup=markup)
-
 
 
 async def fetch_homework(callback_query, selected_date, token):
@@ -262,7 +329,9 @@ async def fetch_homework(callback_query, selected_date, token):
     try:
         student = Student(token)
         homeworks = Homeworks(student)
-        homework_list = homeworks.get_homework_by_date(selected_date.strftime('%Y-%m-%d'))
+        homework_list = homeworks.get_homework_by_date(
+            selected_date.strftime("%Y-%m-%d")
+        )
 
         await loading_message.delete()
 
@@ -273,7 +342,8 @@ async def fetch_homework(callback_query, selected_date, token):
         homework_info = HomeworksWrap.build(homework_list)
 
         await callback_query.message.answer(
-            f"<b>📚 Домашние задания на {selected_date}:\n{homework_info}</b>", parse_mode="HTML"
+            f"<b>📚 Домашние задания на {selected_date}:\n{homework_info}</b>",
+            parse_mode="HTML",
         )
 
     except DnevnikTokenError:
@@ -287,6 +357,7 @@ async def fetch_homework(callback_query, selected_date, token):
             f"❌ Произошла ошибка при получении домашнего задания: {str(e)}"
         )
 
+
 @router.callback_query(F.data == "marks_by_date")
 async def process_marks_by_date(callback_query: types.CallbackQuery):
     chat_id = callback_query.from_user.id
@@ -298,20 +369,29 @@ async def process_marks_by_date(callback_query: types.CallbackQuery):
         )
         return
 
-    
-    calendar_instance = Calendar(chat_id, callback_query.message.message_id, fetch_marks, action='marks_by_date', user_state=user_state)
+    calendar_instance = Calendar(
+        chat_id,
+        callback_query.message.message_id,
+        fetch_marks,
+        action="marks_by_date",
+        user_state=user_state,
+    )
     msg_text, markup = await calendar_instance.setup_buttons()
     await callback_query.message.answer(msg_text, reply_markup=markup)
 
-async def fetch_marks_by_date(callback_query: types.CallbackQuery, selected_date: datetime, token: str):
+
+async def fetch_marks_by_date(
+    callback_query: types.CallbackQuery, selected_date: datetime, token: str
+):
     loading_message = await callback_query.message.answer("⏳ Получение оценок...")
 
     try:
         student = Student(token)
         marks_by_date_instance = MarksByDate(student)
 
-       
-        marks_info = marks_by_date_instance.get_mark_for_date(selected_date.strftime('%Y-%m-%d'))
+        marks_info = marks_by_date_instance.get_mark_for_date(
+            selected_date.strftime("%Y-%m-%d")
+        )
 
         await loading_message.delete()
         await callback_query.message.answer(marks_info, parse_mode="HTML")
@@ -329,6 +409,7 @@ async def fetch_marks_by_date(callback_query: types.CallbackQuery, selected_date
             f"❌ Произошла ошибка при получении оценок: {str(e)}"
         )
 
+
 @router.callback_query(F.data == "marks")
 async def process_marks(callback_query: types.CallbackQuery):
     chat_id = callback_query.from_user.id
@@ -340,17 +421,22 @@ async def process_marks(callback_query: types.CallbackQuery):
         )
         return
 
-    user_state[chat_id] = {}  
+    user_state[chat_id] = {}
 
-  
     calendar_instance = Calendar(
-        chat_id, callback_query.message.message_id, process_date_selection, action='marks', user_state=user_state
+        chat_id,
+        callback_query.message.message_id,
+        process_date_selection,
+        action="marks",
+        user_state=user_state,
     )
     msg_text, markup = await calendar_instance.setup_buttons()
     await callback_query.message.answer(msg_text, reply_markup=markup)
 
 
-async def fetch_marks(callback_query: types.CallbackQuery, chat_id, start_date, end_date):
+async def fetch_marks(
+    callback_query: types.CallbackQuery, chat_id, start_date, end_date
+):
     loading_message = await callback_query.message.answer("⏳ Получение оценок...")
     token = user_tokens.get(chat_id)
 
@@ -358,35 +444,45 @@ async def fetch_marks(callback_query: types.CallbackQuery, chat_id, start_date, 
         student = Student(token)
         marks_instance = Marks(student)
 
-        marks_list = marks_instance.get_marks_by_date(start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+        marks_list = marks_instance.get_marks_by_date(
+            start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
+        )
         await loading_message.delete()
 
         if not marks_list:
             await callback_query.message.answer("❌ Нет оценок на выбранные даты.")
             return
 
-     
         marks_info = MarksWrap.build(marks_list)
 
         await callback_query.message.answer(
-            f"📝 Оценки с [{start_date.strftime('%Y-%m-%d')}] по [{end_date.strftime('%Y-%m-%d')}]:\n{marks_info}", parse_mode="HTML"
+            f"📝 Оценки с [{start_date.strftime('%Y-%m-%d')}] по [{end_date.strftime('%Y-%m-%d')}]:\n{marks_info}",
+            parse_mode="HTML",
         )
 
     except DnevnikTokenError:
         logging.error(f"Ошибка авторизации: токен {token} недействителен.")
         await loading_message.delete()
-        await callback_query.message.answer("❌ Ошибка авторизации. Попробуйте обновить токен.")
+        await callback_query.message.answer(
+            "❌ Ошибка авторизации. Попробуйте обновить токен."
+        )
     except Exception as e:
         logging.error(f"Произошла ошибка при получении оценок: {str(e)}")
         await loading_message.delete()
-        await callback_query.message.answer(f"❌ Произошла ошибка при получении оценок: {str(e)}")
+        await callback_query.message.answer(
+            f"❌ Произошла ошибка при получении оценок: {str(e)}"
+        )
 
 
 @router.callback_query(F.data == "cal:left")
 async def process_prev_month(callback_query: types.CallbackQuery):
     try:
         calendar_instance = Calendar(
-           callback_query.from_user.id, callback_query.message.message_id, process_date_selection, action=user_state['action'], user_state=user_state
+            callback_query.from_user.id,
+            callback_query.message.message_id,
+            process_date_selection,
+            action=user_state["action"],
+            user_state=user_state,
         )
         msg_text, markup = await calendar_instance.backward()
         await callback_query.message.edit_text(msg_text, reply_markup=markup)
@@ -399,7 +495,11 @@ async def process_prev_month(callback_query: types.CallbackQuery):
 async def process_next_month(callback_query: types.CallbackQuery):
     try:
         calendar_instance = Calendar(
-            callback_query.from_user.id, callback_query.message.message_id, process_date_selection, action=user_state['action'], user_state=user_state
+            callback_query.from_user.id,
+            callback_query.message.message_id,
+            process_date_selection,
+            action=user_state["action"],
+            user_state=user_state,
         )
         msg_text, markup = await calendar_instance.forward()
         await callback_query.message.edit_text(msg_text, reply_markup=markup)
@@ -412,13 +512,19 @@ async def process_next_month(callback_query: types.CallbackQuery):
 async def process_current_month(callback_query: types.CallbackQuery):
     try:
         calendar_instance = Calendar(
-            callback_query.from_user.id, callback_query.message.message_id, process_date_selection, action=user_state['action'], user_state=user_state
+            callback_query.from_user.id,
+            callback_query.message.message_id,
+            process_date_selection,
+            action=user_state["action"],
+            user_state=user_state,
         )
         msg_text, markup = await calendar_instance.go_to_current_month()
         await callback_query.message.edit_text(msg_text, reply_markup=markup)
     except Exception as e:
         logging.error(f"Ошибка при переключении на текущий месяц: {str(e)}")
-        await callback_query.message.answer("❌ Ошибка при переключении на текущий месяц.")
+        await callback_query.message.answer(
+            "❌ Ошибка при переключении на текущий месяц."
+        )
 
 
 @router.callback_query(F.data == "cal:close")
