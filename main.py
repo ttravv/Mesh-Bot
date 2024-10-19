@@ -20,8 +20,7 @@ async def main():
     storage = MemoryStorage()
     dp = Dispatcher(storage=storage)
 
-    dp.include_router(router)  
-
+    dp.include_router(router)
     try:
         await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot)
