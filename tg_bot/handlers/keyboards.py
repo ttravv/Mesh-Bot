@@ -1,13 +1,9 @@
 from aiogram import types, Router, F
 from aiogram.filters import Command
-from tg_bot.global_state import (
-    get_user_tokens,
-    set_user_token,
-    get_user_notifications,
-    set_user_notification,
-)
 
 router = Router()
+user_tokens = {}
+user_notifications = {}
 
 
 def create_keyboard():
@@ -30,13 +26,13 @@ async def start_command(message: types.Message):
         reply_markup=keyboard,
     )
 
-    set_user_notification(message.from_user.id, notification.message_id)
+    user_notifications[message.from_user.id] = notification.message_id
 
 
 @router.callback_query(F.data == "refresh_token")
 async def refresh_token(callback_query: types.CallbackQuery):
     chat_id = callback_query.from_user.id
-    get_user_tokens().pop(chat_id, None)
+    user_tokens.pop(chat_id, None)
 
     await callback_query.message.answer(
         "Чтобы обновить токен, пожалуйста, введите новый токен ниже."
@@ -50,16 +46,16 @@ async def process_token(message: types.Message):
     token = message.text
     chat_id = message.from_user.id
 
-    set_user_token(chat_id, token)
+    user_tokens[chat_id] = token
     keyboard = create_options_keyboard()
 
-    if chat_id in get_user_notifications():
-        request_message_id, token_message_id = get_user_notifications()[chat_id]
+    if chat_id in user_notifications:
+        request_message_id, token_message_id = user_notifications[chat_id]
         try:
 
             await message.bot.delete_message(chat_id, request_message_id)
             await message.bot.delete_message(chat_id, token_message_id)
-            del get_user_notifications()[chat_id]
+            del user_notifications[chat_id]
         except Exception as e:
             print(f"Failed to delete notification messages: {e}")
 

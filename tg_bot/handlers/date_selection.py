@@ -5,12 +5,7 @@ from tg_bot.handlers.process_homework import fetch_homework
 from tg_bot.handlers.process_marks import fetch_marks, fetch_marks_by_date
 from tg_bot.handlers.process_schedule import fetch_schedule
 from tg_bot.handlers.process_notifications import fetch_notifications
-from tg_bot.global_state import (
-    get_user_tokens,
-    get_user_state,
-    set_user_state,
-    remove_user_state,
-)
+from tg_bot.global_state import get_user_tokens, get_user_state, set_user_state
 
 router = Router()
 
@@ -42,8 +37,9 @@ async def process_date_selection(callback_query: types.CallbackQuery):
         await fetch_notifications(callback_query, selected_date, token)
 
     if (chat_id in user_state) and ("start_date" in user_state[chat_id]):
-        start_date = user_state[chat_id]["start_date"]
+        start_date = user_state["start_date"]
         end_date = selected_date
+        user_state.pop("start_date")
         await fetch_marks(callback_query, chat_id, start_date, end_date)
 
     elif (

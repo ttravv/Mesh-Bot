@@ -32,7 +32,7 @@ async def process_token(message: types.Message):
     chat_id = message.from_user.id
     user_tokens = get_user_tokens()
 
-    if chat_id in user_tokens:
+    if chat_id in user_tokens and is_valid_jwt(token):
         await message.answer(
             "🚫 Вы уже авторизованы. Пожалуйста, используйте команду 'Обновить токен', если хотите изменить токен."
         )
@@ -44,7 +44,9 @@ async def process_token(message: types.Message):
         )
         return
 
-    set_user_token(chat_id, token)
+    else:
+        set_user_token(chat_id, token)
+
     keyboard = create_options_keyboard()
 
     user_notifications = get_user_notifications()
