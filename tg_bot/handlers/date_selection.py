@@ -9,15 +9,16 @@ from tg_bot.global_state import (
     get_user_tokens,
     get_user_state,
     set_user_state,
-    remove_user_state
+    remove_user_state,
 )
 
 router = Router()
 
+
 @router.callback_query(F.data.startswith("date_"))
 async def process_date_selection(callback_query: types.CallbackQuery):
     chat_id = callback_query.from_user.id
-    user_tokens = get_user_tokens()  
+    user_tokens = get_user_tokens()
     token = user_tokens.get(chat_id)
 
     if not token:
@@ -28,8 +29,8 @@ async def process_date_selection(callback_query: types.CallbackQuery):
 
     year, month, day = map(int, callback_query.data.split("_")[1:])
     selected_date = datetime(year, month, day)
-    
-    user_state = get_user_state()  
+
+    user_state = get_user_state()
 
     if user_state["action"] == "homework":
         await fetch_homework(callback_query, selected_date, token)
@@ -40,9 +41,18 @@ async def process_date_selection(callback_query: types.CallbackQuery):
     if user_state["action"] == "notifications":
         await fetch_notifications(callback_query, selected_date, token)
 
-    if chat_id in user_state and "start_date" not in user_state[chat_id]:
-        user_state[chat_id]["start_date"] = selected_date
-        set_user_state(chat_id, user_state) 
+    if (chat_id in user_state) and ("start_date" in user_state[chat_id]):
+        start_date = user_state[chat_id]["start_date"]
+        end_date = selected_date
+        await fetch_marks(callback_query, chat_id, start_date, end_date)
+
+    elif (
+        chat_id in user_state
+        and "start_date" not in user_state[chat_id]
+        and user_state["action"] == "marks"
+    ):
+        user_state["start_date"] = selected_date
+        set_user_state(chat_id, user_state)
 
         await callback_query.message.answer(
             "📅 Начальная дата выбрана. Теперь выберите конечную дату:"
@@ -59,18 +69,6 @@ async def process_date_selection(callback_query: types.CallbackQuery):
 
         msg_text, markup = await calendar_instance.setup_buttons()
         await callback_query.message.edit_text(msg_text, reply_markup=markup)
-
-    elif (
-        chat_id in user_state
-        and "start_date" in user_state[chat_id]
-        or user_state["action"] == "marks"
-    ):
-        start_date = user_state[chat_id]["start_date"]
-        end_date = selected_date
-
-        remove_user_state(chat_id)  
-
-        await fetch_marks(callback_query, chat_id, start_date, end_date)
 
     else:
         calendar_instance = Calendar(

@@ -3,7 +3,7 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from tg_bot.config import load_config
-from tg_bot.handlers.start import router  
+from tg_bot.handlers.start import router
 
 
 logger = logging.getLogger(__name__)
